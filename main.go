@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"slices"
 
 	_ "embed"
 
@@ -31,10 +32,21 @@ var (
 	accessKeyBinding             = binding.BindString(&config.AccessKeyID)
 )
 
+type Logger struct {
+}
+
+func (l *Logger) Write(b []byte) (n int, e error) {
+	fmt.Print(string(b))
+	logText += string(b)
+	if slices.Contains(b, '\n') {
+		logTextBinding.Reload()
+	}
+	return len(b), nil
+}
 func init() {
 	log.SetFlags(log.Lshortfile)
 	// buf := new(bytes.Buffer)
-	// log.SetOutput(buf)
+	log.SetOutput(&Logger{})
 	// go func() {
 	// 	ticker := time.NewTicker(time.Second * 3)
 	// 	for range ticker.C {
@@ -65,11 +77,19 @@ func main() {
 				w.SetContent(widget.NewRichTextFromMarkdown(helpText))
 				w.Show()
 			}),
+			getLogEntry(),
 		),
 	)
 	mainWin.Show()
 
 	a.Run()
+}
+func getLogEntry() fyne.CanvasObject {
+	ent := widget.NewMultiLineEntry()
+	ent.Bind(logTextBinding)
+	ent.Scroll = fyne.ScrollBoth
+	ent.SetMinRowsVisible(25)
+	return ent
 }
 func getDeleteButton() fyne.CanvasObject {
 	bt := widget.NewButton("一键销毁WG服务器", func() {

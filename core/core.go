@@ -28,6 +28,7 @@ const (
 	defaultRegionId     = "cn-hongkong"
 	defaultZoneId       = "cn-hongkong-c"
 	defaultPort         = "51823"
+	defaultConf         = "client.conf"
 )
 
 func Delete() error {
@@ -104,7 +105,7 @@ func Deploy() error {
 		return e
 	}
 
-	e = utils.Retry(3, time.Second*10, func() error {
+	e = utils.Retry(3, time.Second*15, func() error {
 		e = dialSSH(ip)
 		if e != nil {
 			log.Println(e)
@@ -194,7 +195,7 @@ func dialSSH(ip string) error {
 	}
 	defer conn.Close()
 
-	dst := filepath.Join(configdir.LocalCache(config.AppName), "client.conf")
+	dst := filepath.Join(configdir.LocalCache(config.AppName), defaultConf)
 	e = os.MkdirAll(filepath.Dir(dst), 0755)
 	if e != nil {
 		log.Println(e)
@@ -410,6 +411,7 @@ func findInstance(cli *ecs.Client) (id, ip string, err error) {
 	} else {
 		ip = *inst.PublicIpAddress.IpAddress[0]
 	}
+
 	return
 }
 
