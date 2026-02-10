@@ -6,15 +6,15 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 
 	"github.com/stevenzack/wgcli/config"
 	"github.com/stevenzack/wgcli/core"
 )
 
 var (
-	c    = flag.String("c", "", "import Aliyun AccessKey config file path (.csv)")
-	hour = flag.Int("hour", 1, "Automatically delete it after X hours? (default 1 hour)")
+	c     = flag.String("c", "", "import Aliyun AccessKey config file path (.csv)")
+	hour  = flag.Int("hour", 1, "Automatically delete it after X hours? (default 1 hour)")
+	regen = flag.String("r", "hk", "regen, default is hk e.g. hk|sg|kr|jp")
 	//go:embed helptext.md
 	helpText string
 )
@@ -25,6 +25,11 @@ func init() {
 
 func main() {
 	flag.Parse()
+	e := core.SetRegen(*regen)
+	if e != nil {
+		log.Println(e)
+		return
+	}
 
 	if *c != "" {
 		log.Println("importing access key: ", *c)
@@ -36,7 +41,7 @@ func main() {
 	}
 
 	log.Println("loading access key file")
-	e := config.LoadAccessKeyFile()
+	e = config.LoadAccessKeyFile()
 	if e != nil {
 		log.Println(e)
 
@@ -55,16 +60,4 @@ func main() {
 		return
 	}
 	log.Println("OK")
-}
-
-func getDefaultPath() string {
-	home, e := os.UserHomeDir()
-	if e != nil {
-		log.Println(e)
-		os.Exit(-1)
-		return ""
-	}
-
-	dir := filepath.Join(home, ".config", "wgcli")
-	return filepath.Join(dir, "config.csv")
 }

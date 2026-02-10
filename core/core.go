@@ -25,8 +25,6 @@ import (
 const (
 	defaultSecurityName = "sg-wgcli"
 	defaultInstanceName = "ecs-wgcli"
-	defaultRegionId     = "cn-hongkong"
-	defaultZoneId       = "cn-hongkong-c"
 	defaultPort         = "51823"
 	defaultConf         = "client.conf"
 )
@@ -56,7 +54,7 @@ func Delete() error {
 	}
 
 	log.Println("delete instance")
-	e = utils.Retry(3, time.Second*10, func() error {
+	e = utils.Retry(5, time.Second*10, func() error {
 		_, e := cli.DeleteInstance(&ecs.DeleteInstanceRequest{
 			InstanceId: &instanceId,
 		})
@@ -99,13 +97,20 @@ func Deploy(hour int) error {
 		}
 	}
 
-	e = startInstance(cli, instanceId)
+	e = utils.Retry(5, time.Second*20, func() error {
+		e = startInstance(cli, instanceId)
+		if e != nil {
+			log.Println(e)
+			return e
+		}
+		return nil
+	})
 	if e != nil {
 		log.Println(e)
 		return e
 	}
 
-	e = utils.Retry(3, time.Second*15, func() error {
+	e = utils.Retry(5, time.Second*20, func() error {
 		e = dialSSH(ip)
 		if e != nil {
 			log.Println(e)
@@ -227,7 +232,7 @@ func dialSSH(ip string) error {
 	return nil
 }
 func startInstance(cli *ecs.Client, instId string) error {
-	log.Println("start instance")
+	log.Println("starting instance...")
 	_, e := cli.StartInstance(&ecs.StartInstanceRequest{
 		InstanceId: tea.String(instId),
 	})
@@ -253,16 +258,16 @@ func createInstance(cli *ecs.Client, hour int) (id, ip string, err error) {
 		return
 	}
 	res, e := cli.CreateInstance(&ecs.CreateInstanceRequest{
-		RegionId:                tea.String(defaultRegionId),
+		RegionId:                tea.String(string(regenId)),
 		AutoRenew:               tea.Bool(false),
 		ClientToken:             tea.String(uuid.NewString()),
-		InstanceType:            tea.String("ecs.e-c4m1.large"),
+		InstanceType:            tea.String(instanceTypeMap[regenId]),
 		InternetMaxBandwidthOut: tea.Int32(50),
 		Password:                tea.String(getPassword()),
 		SecurityGroupId:         &sgId,
 		SpotDuration:            tea.Int32(0),
 		VSwitchId:               tea.String(vswId),
-		ZoneId:                  tea.String(defaultZoneId),
+		ZoneId:                  tea.String(zoneMap[regenId]),
 		InstanceName:            tea.String(defaultInstanceName),
 		ImageId:                 tea.String("debian_12_8_x64_20G_alibase_20241216.vhd"),
 		SystemDisk: &ecs.CreateInstanceRequestSystemDisk{
@@ -297,14 +302,14 @@ func createInstance(cli *ecs.Client, hour int) (id, ip string, err error) {
 		_, e := cli.ModifyInstanceAutoReleaseTime(&ecs.ModifyInstanceAutoReleaseTimeRequest{
 			AutoReleaseTime: &releaseTime,
 			InstanceId:      &id,
-			RegionId:        cli.RegionId,
+			RegionId:        (*string)(&regenId),
 		})
 		if e != nil {
 			log.Println(e)
 			err = e
 			return
 		}
-		log.Println("set ecs instance auto release time to ", releaseTime," UTC")
+		log.Println("set ecs instance auto release time to ", releaseTime, " UTC")
 	}
 	return
 }
@@ -312,8 +317,8 @@ func createInstance(cli *ecs.Client, hour int) (id, ip string, err error) {
 func findAndCreateVSwitch(cli *ecs.Client) (swId string, err error) {
 	log.Println("find and create vswitch")
 	res, e := cli.DescribeVSwitches(&ecs.DescribeVSwitchesRequest{
-		RegionId:  tea.String(defaultRegionId),
-		ZoneId:    tea.String(defaultZoneId),
+		RegionId:  tea.String(string(regenId)),
+		ZoneId:    tea.String(zoneMap[regenId]),
 		IsDefault: tea.Bool(true),
 	})
 	if e != nil {
@@ -323,7 +328,9 @@ func findAndCreateVSwitch(cli *ecs.Client) (swId string, err error) {
 	}
 	l := res.Body.VSwitches.VSwitch
 	if len(l) == 0 {
-		err = errors.New("no vswitch found in zone " + defaultZoneId)
+		err = errors.New("no vswitch found in zone " + zoneMap[regenId])
+		log.Println("please create a VSwitch for regen ", regenId, ", zone", zoneMap[regenId], " on https://cn.aliyun.com")
+		log.Println("请先在阿里云的", regenId, "区域里，创建默认交换机")
 		return
 	}
 	swId = *l[0].VSwitchId
@@ -333,7 +340,7 @@ func findAndCreateVSwitch(cli *ecs.Client) (swId string, err error) {
 func findAndCreateSecurityGroup(cli *ecs.Client) (sgId string, err error) {
 	log.Println("find and create security group")
 	l, e := cli.DescribeSecurityGroups(&ecs.DescribeSecurityGroupsRequest{
-		RegionId:          tea.String(defaultRegionId),
+		RegionId:          tea.String(string(regenId)),
 		SecurityGroupName: tea.String(defaultSecurityName),
 	})
 	if e != nil {
@@ -344,7 +351,7 @@ func findAndCreateSecurityGroup(cli *ecs.Client) (sgId string, err error) {
 	if len(l.Body.SecurityGroups.SecurityGroup) == 0 {
 		res, e := cli.CreateSecurityGroup(&ecs.CreateSecurityGroupRequest{
 			SecurityGroupName: tea.String(defaultSecurityName),
-			RegionId:          tea.String(defaultRegionId),
+			RegionId:          tea.String(string(regenId)),
 			Description:       tea.String("Created by wgcli"),
 		})
 		if e != nil {
@@ -370,7 +377,7 @@ func findAndCreateSecurityGroup(cli *ecs.Client) (sgId string, err error) {
 func authSecurityGroupPerm(cli *ecs.Client, sgId string) error {
 	log.Println("auth security group permissions")
 	_, e := cli.AuthorizeSecurityGroup(&ecs.AuthorizeSecurityGroupRequest{
-		RegionId:        tea.String(defaultRegionId),
+		RegionId:        tea.String(string(regenId)),
 		SecurityGroupId: tea.String(sgId),
 		Permissions: []*ecs.AuthorizeSecurityGroupRequestPermissions{
 			{
@@ -399,7 +406,7 @@ func getPassword() string {
 func findInstance(cli *ecs.Client) (id, ip string, err error) {
 	log.Println("find instance")
 	l, e := cli.DescribeInstances(&ecs.DescribeInstancesRequest{
-		RegionId:     tea.String(defaultRegionId),
+		RegionId:     tea.String(string(regenId)),
 		InstanceName: tea.String(defaultInstanceName),
 	})
 	if e != nil {
@@ -451,7 +458,7 @@ func createEcsClient(ak, as string) (*ecs.Client, error) {
 		Credential: credential,
 	}
 	// Endpoint 请参考 https://api.aliyun.com/product/Ecs
-	config.Endpoint = tea.String("ecs.cn-hongkong.aliyuncs.com")
+	config.Endpoint = tea.String("ecs." + string(regenId) + ".aliyuncs.com")
 	cli, e := ecs.NewClient(config)
 	if e != nil {
 		log.Println(e)

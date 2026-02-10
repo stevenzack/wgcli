@@ -10,11 +10,11 @@ import (
 
 func Retry(count int, interval time.Duration, action func() error) error {
 	for i := 0; i < count; i++ {
-		time.Sleep(interval)
 		e := action()
 		if e != nil {
 			log.Println(e)
 			log.Println("retry ", i, " times")
+			time.Sleep(interval)
 			continue
 		}
 		return nil
