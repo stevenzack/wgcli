@@ -71,6 +71,7 @@ func ImportAccessKeyFile(csvPath string) error {
 		log.Println(e)
 		return e
 	}
+	log.Println("access key file imported: ", dst)
 
 	e = LoadAccessKeyFile()
 	if e != nil {

@@ -74,7 +74,7 @@ func Delete() error {
 	log.Println("instance deleted")
 	return nil
 }
-func Deploy() error {
+func Deploy(hour int) error {
 	if config.AccessKeyID == "" || config.AccessKeySecret == "" {
 		return errors.New("尚未导入阿里云AccessKey.csv文件，无法访问云服务")
 	}
@@ -88,7 +88,7 @@ func Deploy() error {
 	if e != nil {
 		if e == os.ErrNotExist {
 			//create instance
-			instanceId, ip, e = createInstance(cli)
+			instanceId, ip, e = createInstance(cli, hour)
 			if e != nil {
 				log.Println(e)
 				return e
@@ -219,6 +219,7 @@ func dialSSH(ip string) error {
 		return e
 	}
 
+	log.Println("wireguard conf file saved at: ", dst)
 	e = openurl.Open(filepath.Dir(dst))
 	if e != nil {
 		log.Println(e)
@@ -237,7 +238,7 @@ func startInstance(cli *ecs.Client, instId string) error {
 	return nil
 }
 
-func createInstance(cli *ecs.Client) (id, ip string, err error) {
+func createInstance(cli *ecs.Client, hour int) (id, ip string, err error) {
 	log.Println("create instance")
 	sgId, e := findAndCreateSecurityGroup(cli)
 	if e != nil {
@@ -290,6 +291,21 @@ func createInstance(cli *ecs.Client) (id, ip string, err error) {
 	}
 	ip = *res1.Body.IpAddress
 
+	if hour > 0 {
+		const layout = "2006-01-02T15:04:05Z"
+		releaseTime := time.Now().Add(time.Hour * time.Duration(hour)).In(time.UTC).Format(layout)
+		_, e := cli.ModifyInstanceAutoReleaseTime(&ecs.ModifyInstanceAutoReleaseTimeRequest{
+			AutoReleaseTime: &releaseTime,
+			InstanceId:      &id,
+			RegionId:        cli.RegionId,
+		})
+		if e != nil {
+			log.Println(e)
+			err = e
+			return
+		}
+		log.Println("set ecs instance auto release time to ", releaseTime," UTC")
+	}
 	return
 }
 
