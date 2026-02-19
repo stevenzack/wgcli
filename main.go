@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 
+	"github.com/kirsle/configdir"
+	"github.com/stevenzack/openurl"
 	"github.com/stevenzack/wgcli/config"
 	"github.com/stevenzack/wgcli/core"
 )
@@ -25,7 +28,7 @@ func init() {
 
 func main() {
 	flag.Parse()
-	e := core.SetRegen(*regen)
+	e := core.SetRegenName(*regen)
 	if e != nil {
 		log.Println(e)
 		return
@@ -54,7 +57,12 @@ func main() {
 	}
 
 	log.Println("deploying wireguard server...")
-	e = core.Deploy(*hour)
+	if config.CacheDir == "" {
+		config.CacheDir = configdir.LocalCache()
+	}
+	e = core.Deploy(*hour, config.CacheDir, func(path string) {
+		openurl.Open(filepath.Dir(path))
+	})
 	if e != nil {
 		log.Println(e)
 		return

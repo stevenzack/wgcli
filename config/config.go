@@ -20,6 +20,7 @@ const (
 var (
 	AccessKeyID, AccessKeySecret string
 	aesKey                       = []byte{163, 172, 28, 210, 169, 5, 152, 13, 83, 58, 114, 243, 56, 67, 168, 136, 132, 247, 151, 209, 9, 200, 17, 122, 196, 110, 167, 25, 151, 132, 245, 26}
+	ConfigDir, CacheDir          string
 )
 
 func init() {
@@ -30,14 +31,16 @@ func init() {
 }
 
 func getAccessKeyPath() (string, error) {
-	dir := configdir.LocalConfig(AppName)
-	e := configdir.MakePath(dir)
+	if ConfigDir == "" {
+		ConfigDir = configdir.LocalConfig(AppName)
+	}
+	e := configdir.MakePath(ConfigDir)
 	if e != nil {
-		log.Println(e)
+		log.Println(e, ConfigDir)
 		return "", e
 	}
 	const ak = `AccessKey.csv`
-	dst := filepath.Join(dir, ak)
+	dst := filepath.Join(ConfigDir, ak)
 	return dst, nil
 }
 

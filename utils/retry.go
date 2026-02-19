@@ -13,7 +13,7 @@ func Retry(count int, interval time.Duration, action func() error) error {
 		e := action()
 		if e != nil {
 			log.Println(e)
-			log.Println("retry ", i, " times")
+			log.Println("retry ", i+1, " times")
 			time.Sleep(interval)
 			continue
 		}

@@ -14,9 +14,7 @@ import (
 	"github.com/alibabacloud-go/tea/tea"
 	credential "github.com/aliyun/credentials-go/credentials"
 	"github.com/google/uuid"
-	"github.com/kirsle/configdir"
 	"github.com/pkg/sftp"
-	"github.com/stevenzack/openurl"
 	"github.com/stevenzack/wgcli/config"
 	"github.com/stevenzack/wgcli/utils"
 	"golang.org/x/crypto/ssh"
@@ -72,7 +70,7 @@ func Delete() error {
 	log.Println("instance deleted")
 	return nil
 }
-func Deploy(hour int) error {
+func Deploy(hour int, confDstDir string, fn func(path string)) error {
 	if config.AccessKeyID == "" || config.AccessKeySecret == "" {
 		return errors.New("尚未导入阿里云AccessKey.csv文件，无法访问云服务")
 	}
@@ -111,7 +109,7 @@ func Deploy(hour int) error {
 	}
 
 	e = utils.Retry(5, time.Second*20, func() error {
-		e = dialSSH(ip)
+		e = dialSSH(ip, confDstDir, fn)
 		if e != nil {
 			log.Println(e)
 			return e
@@ -126,7 +124,7 @@ func Deploy(hour int) error {
 	return nil
 }
 
-func dialSSH(ip string) error {
+func dialSSH(ip, confDstDir string, fn func(path string)) error {
 	log.Println("ssh connecting ", ip)
 	cli, e := ssh.Dial("tcp", ip+":22", &ssh.ClientConfig{
 		User: "root",
@@ -200,7 +198,7 @@ func dialSSH(ip string) error {
 	}
 	defer conn.Close()
 
-	dst := filepath.Join(configdir.LocalCache(config.AppName), defaultConf)
+	dst := filepath.Join(confDstDir, defaultConf)
 	e = os.MkdirAll(filepath.Dir(dst), 0755)
 	if e != nil {
 		log.Println(e)
@@ -225,10 +223,7 @@ func dialSSH(ip string) error {
 	}
 
 	log.Println("wireguard conf file saved at: ", dst)
-	e = openurl.Open(filepath.Dir(dst))
-	if e != nil {
-		log.Println(e)
-	}
+	fn(dst)
 	return nil
 }
 func startInstance(cli *ecs.Client, instId string) error {
