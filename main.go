@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"os/user"
 	"path/filepath"
 	"runtime"
@@ -18,6 +17,7 @@ import (
 
 var (
 	c     = flag.String("c", "", "import Aliyun AccessKey config file path (.csv)")
+	del   = flag.Bool("d", false, "Delete existing instance")
 	hour  = flag.Int("hour", 1, "Automatically delete it after X hours? (default 1 hour)")
 	regen = flag.String("r", "hk", "regen, default is hk e.g. hk|sg|kr|jp")
 	//go:embed helptext.md
@@ -58,6 +58,16 @@ func main() {
 		return
 	}
 
+	if *del {
+		log.Println("deleting existing instance")
+		e := core.Delete()
+		if e != nil {
+			log.Println(e)
+			return
+		}
+		return
+	}
+
 	log.Println("deploying wireguard server...")
 	dst, e := getDstDir()
 	if e != nil {
@@ -65,19 +75,6 @@ func main() {
 		return
 	}
 	e = core.Deploy(*hour, dst, func(path string) {
-		if runtime.GOOS == "linux" {
-			cmd := exec.Command("/usr/bin/wg-quick", "up", "client")
-			cmd.Stdin = os.Stdin
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			out, e := cmd.CombinedOutput()
-			if e != nil {
-				log.Println(e)
-				return
-			}
-			fmt.Println(out)
-			return
-		}
 		openurl.Open(filepath.Dir(path))
 	})
 	if e != nil {
@@ -94,8 +91,8 @@ func getDstDir() (string, error) {
 		return "", e
 	}
 	switch runtime.GOOS {
-	case "linux":
-		return "/etc/wireguard", nil
+	// case "linux":
+	// 	return "/etc/wireguard", nil
 	default:
 		return filepath.Join(wd.HomeDir, "Downloads"), nil
 	}

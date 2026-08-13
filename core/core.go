@@ -2,8 +2,10 @@ package core
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
@@ -168,7 +170,8 @@ func dialSSH(ip, confDstDir string, fn func(path string)) error {
 		return e
 	}
 
-	stdin := "\n51823\n\n\n\n"
+	port := 51823 + rand.Intn(30)
+	stdin := fmt.Sprintf("\n%d\n\n\n\n", port)
 	ses, e := cli.NewSession()
 	if e != nil {
 		log.Println(e)
@@ -188,10 +191,6 @@ func dialSSH(ip, confDstDir string, fn func(path string)) error {
 	// download client.conf
 	log.Println("now downloading client.conf")
 	conn, e := sftp.NewClient(cli)
-	if e != nil {
-		log.Println(e)
-		return e
-	}
 	if e != nil {
 		log.Println(e)
 		return e
@@ -377,7 +376,7 @@ func authSecurityGroupPerm(cli *ecs.Client, sgId string) error {
 		Permissions: []*ecs.AuthorizeSecurityGroupRequestPermissions{
 			{
 				IpProtocol:   tea.String("UDP"),
-				PortRange:    tea.String(defaultPort + "/" + defaultPort),
+				PortRange:    tea.String("1/65535"),
 				Priority:     tea.String("1"),
 				SourceCidrIp: tea.String("0.0.0.0/0"),
 			},
