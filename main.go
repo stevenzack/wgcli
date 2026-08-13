@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
+	"os/user"
 	"path/filepath"
+	"runtime"
 
-	"github.com/kirsle/configdir"
 	"github.com/stevenzack/openurl"
 	"github.com/stevenzack/wgcli/config"
 	"github.com/stevenzack/wgcli/core"
@@ -57,10 +59,25 @@ func main() {
 	}
 
 	log.Println("deploying wireguard server...")
-	if config.CacheDir == "" {
-		config.CacheDir = configdir.LocalCache()
+	dst, e := getDstDir()
+	if e != nil {
+		log.Println(e)
+		return
 	}
-	e = core.Deploy(*hour, config.CacheDir, func(path string) {
+	e = core.Deploy(*hour, dst, func(path string) {
+		if runtime.GOOS == "linux" {
+			cmd := exec.Command("/usr/bin/wg-quick", "up", "client")
+			cmd.Stdin = os.Stdin
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			out, e := cmd.CombinedOutput()
+			if e != nil {
+				log.Println(e)
+				return
+			}
+			fmt.Println(out)
+			return
+		}
 		openurl.Open(filepath.Dir(path))
 	})
 	if e != nil {
@@ -68,4 +85,18 @@ func main() {
 		return
 	}
 	log.Println("OK")
+}
+
+func getDstDir() (string, error) {
+	wd, e := user.Current()
+	if e != nil {
+		log.Println(e)
+		return "", e
+	}
+	switch runtime.GOOS {
+	case "linux":
+		return "/etc/wireguard", nil
+	default:
+		return filepath.Join(wd.HomeDir, "Downloads"), nil
+	}
 }
