@@ -11,7 +11,7 @@ const (
 )
 
 var (
-	regenId = HK
+	regenId = SG
 	zoneMap = map[REGEN_ID]string{
 		HK: "cn-hongkong-c",
 		SG: "ap-southeast-1c",

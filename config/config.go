@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/user"
 	"path/filepath"
+	"runtime"
 
 	"github.com/kirsle/configdir"
 	"github.com/stevenzack/wgcli/utils"
@@ -131,4 +133,18 @@ func readCsvFile(b []byte) (id, secret string, err error) {
 	}
 	err = fmt.Errorf("invalid record of AccessKey.csv: %v", records)
 	return
+}
+
+func GetConfDstDir() (string, error) {
+	wd, e := user.Current()
+	if e != nil {
+		log.Println(e)
+		return "", e
+	}
+	switch runtime.GOOS {
+	// case "linux":
+	// 	return "/etc/wireguard", nil
+	default:
+		return filepath.Join(wd.HomeDir, "Downloads"), nil
+	}
 }

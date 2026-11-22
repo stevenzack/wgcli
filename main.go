@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/user"
 	"path/filepath"
-	"runtime"
 
 	"github.com/stevenzack/openurl"
 	"github.com/stevenzack/wgcli/config"
@@ -69,7 +67,7 @@ func main() {
 	}
 
 	log.Println("deploying wireguard server...")
-	dst, e := getDstDir()
+	dst, e := config.GetConfDstDir()
 	if e != nil {
 		log.Println(e)
 		return
@@ -82,18 +80,4 @@ func main() {
 		return
 	}
 	log.Println("OK")
-}
-
-func getDstDir() (string, error) {
-	wd, e := user.Current()
-	if e != nil {
-		log.Println(e)
-		return "", e
-	}
-	switch runtime.GOOS {
-	// case "linux":
-	// 	return "/etc/wireguard", nil
-	default:
-		return filepath.Join(wd.HomeDir, "Downloads"), nil
-	}
 }
