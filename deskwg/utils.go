@@ -25,7 +25,7 @@ func RunAsAdmin(name string, args ...string) (string, error) {
 	appleQuote := func(s string) string {
 		s = strings.ReplaceAll(s, "\\", "\\\\")
 		s = strings.ReplaceAll(s, "\"", "\\\"")
-		return "\"" + s + "\""
+		return "\"export PATH=/opt/homebrew/bin:$PATH; " + s + "\""
 	}
 
 	script := "do shell script " +
