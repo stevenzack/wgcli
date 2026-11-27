@@ -11,6 +11,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/kirsle/configdir v0.0.0-20170128060238-e45d2f54772f
 	github.com/pkg/sftp v1.13.9
+	github.com/pkg/xattr v0.4.12
 	github.com/stevenzack/openurl v1.1.0
 	golang.org/x/crypto v0.57.0
 )

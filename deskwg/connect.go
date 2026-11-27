@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"os"
 	"strconv"
+	"time"
 
 	"github.com/egoist/mygo"
+	"github.com/pkg/xattr"
 	"github.com/stevenzack/wgcli/config"
 	"github.com/stevenzack/wgcli/core"
 )
@@ -52,12 +55,34 @@ func (a *app) doConnect() (e error) {
 		defer a.win.Update(func() {
 			a.status = status
 		})
+
 		e := wgQuickDown(a.confPath)
 		if e != nil {
 			log.Println(e)
 		}
+
+		if _, e := os.Lstat(a.confPath); e == nil {
+			b, e := xattr.LGet(a.confPath, XATTR_EXPIRY)
+			if e != nil {
+				log.Println(e)
+			} else if unix, e := strconv.ParseInt(string(b), 10, 64); e == nil {
+				if unix > time.Now().Unix() {
+					e := wgQuickUp(a.confPath)
+					if e != nil {
+						log.Println(e)
+					} else {
+						status = Connected
+						return
+					}
+				}
+			}
+		}
 		e = core.Deploy(hour, config.ConfigDir, func(path string) {
-			e := wgQuickUp(path)
+			e := xattr.LSet(path, XATTR_EXPIRY, []byte(strconv.FormatInt(time.Now().Add(time.Hour*time.Duration(hour)).Unix(), 10)))
+			if e != nil {
+				log.Println(e)
+			}
+			e = wgQuickUp(path)
 			if e != nil {
 				log.Println(e)
 				mygo.Dialog.Error("创建VPN连接失败", e.Error())

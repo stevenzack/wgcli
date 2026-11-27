@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"log"
+	"os"
 	"path/filepath"
 
 	"github.com/egoist/mygo"
@@ -97,6 +98,8 @@ func (a *app) view(c *ui.Context) {
 						if e != nil {
 							log.Println(e)
 							mygo.Dialog.Error("删除失败：", e.Error())
+						} else {
+							os.Remove(a.confPath)
 						}
 					}
 					a.initStatus()

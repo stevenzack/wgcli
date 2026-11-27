@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+const XATTR_EXPIRY = "user.deskwg.expiry"
+
 // /opt/homebrew/bin/wg-quick up /etc/wireguard/wg0.conf
 // 要想支持指纹输入，执行
 // sudo sh -c 'echo "auth sufficient pam_tid.so" > /etc/pam.d/sudo_local'
