@@ -8,6 +8,8 @@ import (
 )
 
 // /opt/homebrew/bin/wg-quick up /etc/wireguard/wg0.conf
+// 要想支持指纹输入，执行
+// sudo sh -c 'echo "auth sufficient pam_tid.so" > /etc/pam.d/sudo_local'
 func RunAsAdmin(name string, args ...string) (string, error) {
 	// 正确处理 shell 参数中的引号和特殊字符
 	quote := func(s string) string {
@@ -25,12 +27,12 @@ func RunAsAdmin(name string, args ...string) (string, error) {
 	appleQuote := func(s string) string {
 		s = strings.ReplaceAll(s, "\\", "\\\\")
 		s = strings.ReplaceAll(s, "\"", "\\\"")
-		return "\"export PATH=/opt/homebrew/bin:$PATH; " + s + "\""
+		return "\"export PATH=/opt/homebrew/bin:$PATH; sudo " + s + "\""
 	}
 
 	script := "do shell script " +
-		appleQuote(shellCmd) +
-		" with administrator privileges"
+		appleQuote(shellCmd)
+		// " with administrator privileges"
 
 	cmd := exec.Command(
 		"/usr/bin/osascript",

@@ -170,7 +170,7 @@ func dialSSH(ip, confDstDir string, fn func(path string)) error {
 		return e
 	}
 
-	port := 51823 + rand.Intn(30)
+	port := 51823 + rand.Intn(1000)
 	stdin := fmt.Sprintf("\n%d\n\n\n\n", port)
 	ses, e := cli.NewSession()
 	if e != nil {
